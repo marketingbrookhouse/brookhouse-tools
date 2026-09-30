@@ -3969,5 +3969,53 @@ document.getElementById('quote-form').addEventListener('submit',function(e){
   f.querySelector('button[type=submit]').disabled=true;
 });
 </script>
+<script>
+/* Save & share quote by link (no accounts) */
+(function(){
+  var P=new URLSearchParams(location.search);
+  var HOST=P.get('host')||'https://cut-and-edge.webflow.io';
+  var TO='hello@brookhouse-cutandedge.com';
+  function b64u(a){var s='';for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  function unb64u(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';var s=atob(t),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
+  async function pipe(bytes,S){var st=new S('deflate-raw'),w=st.writable.getWriter();w.write(bytes);w.close();return new Uint8Array(await new Response(st.readable).arrayBuffer());}
+  async function enc(o){var raw=new TextEncoder().encode(JSON.stringify(o));if(window.CompressionStream)return 'z'+b64u(await pipe(raw,CompressionStream));return 'p'+b64u(raw);}
+  async function dec(t){var b=unb64u(t.slice(1));if(t.charAt(0)==='z')b=await pipe(b,DecompressionStream);return JSON.parse(new TextDecoder().decode(b));}
+  window.bkEncodeQuote=enc;window.bkDecodeQuote=dec;
+  var css=document.createElement('style');
+  css.textContent='#bk-save{max-width:1180px;margin:16px auto;padding:0 20px;font-family:Raleway,sans-serif}#bk-save .bk-box{background:#FFF4ED;border:1px solid #E4E1DE;border-radius:10px;padding:14px 18px}#bk-save button.bk-open{background:#FF671F;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 15px Raleway,sans-serif;cursor:pointer}#bk-save .bk-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}#bk-save input{flex:1;min-width:200px;border:1px solid #E4E1DE;border-radius:8px;padding:10px;font:16px Raleway,sans-serif}#bk-save .bk-btn{background:#1A1A1A;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 15px Raleway,sans-serif;cursor:pointer;text-decoration:none;display:inline-block}#bk-save .bk-ghost{background:#fff;color:#1A1A1A;border:2px solid #1A1A1A}#bk-save p{margin:8px 0 0;font-size:14px;color:#5C5C5C}';
+  document.head.appendChild(css);
+  var box=document.createElement('div');box.id='bk-save';
+  box.innerHTML='<div class="bk-box"><button type="button" class="bk-open">Save this quote &amp; get a link</button><div class="bk-form" style="display:none"><p style="color:#1A1A1A"><strong>No account needed.</strong> We turn your quote into a private link. Open it any time, on any device, to pick up where you left off.</p><div class="bk-row"><input id="bk-name" type="text" placeholder="Quote name, e.g. Kitchen units" aria-label="Quote name"><input id="bk-email" type="email" placeholder="Your email (to send yourself the link)" aria-label="Your email"><button type="button" class="bk-btn" id="bk-make">Create my link</button></div><div id="bk-out" style="display:none"><div class="bk-row"><input id="bk-link" type="text" readonly aria-label="Your quote link"><button type="button" class="bk-btn bk-ghost" id="bk-copy">Copy link</button></div><div class="bk-row"><a class="bk-btn" id="bk-mail" href="#">Email the link to me</a><a class="bk-btn bk-ghost" id="bk-send" href="#">Send this quote to Brookhouse</a></div><p id="bk-note"></p></div></div></div>';
+  function place(){var s=document.querySelector('section');if(s&&s.parentNode)s.parentNode.insertBefore(box,s);else document.body.appendChild(box);}
+  place();
+  var $=function(i){return box.querySelector('#'+i)};
+  box.querySelector('.bk-open').onclick=function(){box.querySelector('.bk-form').style.display='block';this.style.display='none';};
+  $('bk-make').onclick=async function(){
+    var nm=($('bk-name').value||'').trim()||'My quote',em=($('bk-email').value||'').trim();
+    var pl=window.jobPayload(nm);pl.savedAt=new Date().toISOString();
+    var code=await enc(pl);
+    var url=HOST+'/order?q='+code;
+    $('bk-link').value=url;$('bk-out').style.display='block';
+    var subj=encodeURIComponent('Your Brookhouse quote: '+nm);
+    var body=encodeURIComponent('Here is your saved quote. Open this link any time to carry on:\n\n'+url+'\n');
+    $('bk-mail').href='mailto:'+encodeURIComponent(em)+'?subject='+subj+'&body='+body;
+    $('bk-send').href='mailto:'+TO+'?subject='+encodeURIComponent('Quote request: '+nm)+'&body='+encodeURIComponent('Customer: '+(em||'(no email given)')+'\nQuote name: '+nm+'\n\nQuote link:\n'+url+'\n');
+    $('bk-note').textContent=url.length>1800?'This is a large quote, so some email programs may cut the link short. Use Copy link and paste it into an email to be safe.':'Keep this link somewhere safe: anyone with it can open your quote.';
+  };
+  $('bk-copy').onclick=function(){var i=$('bk-link');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand('copy');}this.textContent='Copied ✓';var b=this;setTimeout(function(){b.textContent='Copy link';},1500);};
+  var q=P.get('q');
+  if(q){setTimeout(async function(){
+    try{
+      var view=(location.hash.match(/^#p\/(\w+)/)||[])[1]||'order';
+      var pl=await dec(q);
+      window.localJobs['__link']=pl;window.loadJob('__link');delete window.localJobs['__link'];
+      if(window.renderJobs)window.renderJobs();
+      if(window.go)window.go(view);
+      $('bk-name').value=pl.name||'';
+      var st=document.getElementById('job-status');if(st)st.textContent='';
+    }catch(e){console.warn('Could not open saved quote',e);}
+  },50);}
+})();
+</script>
 </body>
 </html>
