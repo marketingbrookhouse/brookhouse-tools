@@ -737,7 +737,7 @@ footer{border-top:1px solid var(--line);padding:56px 0 40px;font-size:.93rem}
       <div class="section-head">
         <div class="kicker">Job dashboard</div>
         <h2>Your jobs.</h2>
-        <p>Save the whole design — room, cutting list, basket, quote details — as a job, and pick it back up here. Jobs save to the shared team store when available (everyone sees them), and to this device as a backup.</p>
+        <p>Save the whole design — room, cutting list, basket, quote details — as a job, and pick it back up here. Jobs save in this browser. To keep a quote or send it to yourself, use “Save this quote & get a link” at the top of the page.</p>
       </div>
       <div class="shop-grid" style="margin-bottom:34px">
         <div class="shop-card"><span class="scat">Panels</span><h4>Cut &amp; Edge order</h4><p>Cutting list, edging, machining, spray and CNC work.</p><div class="srow"><span></span><a class="btn" href="#p/order">Open</a></div></div>
@@ -1134,7 +1134,7 @@ footer{border-top:1px solid var(--line);padding:56px 0 40px;font-size:.93rem}
               <button class="btn ghost" type="button" onclick="saveCab()">Save</button>
             </div>
             <div id="cab-saved" style="display:grid;gap:8px"></div>
-            <p style="color:var(--muted);font-size:.78rem;margin-top:8px">Saved on this device/browser — customer accounts sync these at the live build.</p>
+            <p style="color:var(--muted);font-size:.78rem;margin-top:8px">Saved in this browser only. <a href="#" onclick="bkOpenSave();return false" style="color:#E0570F;font-weight:700">Email me a link to this design</a></p>
           </div>
         </div>
       </div>
@@ -3430,13 +3430,13 @@ async function saveJob(asNew){
   var pl=jobPayload(nm);
   localJobs[curJobId]=pl;jobsLocalWrite();
   var st=document.getElementById('job-status');
-  st.textContent='Saved on this device…';
+  st.textContent='Saved in this browser…';
   var db=await jobsInitDb();
   if(db){
     try{await db.collection('jobs').doc(curJobId).set(pl);st.textContent='Saved to the shared team store ✓ ('+nm+')';}
-    catch(e){st.textContent='Saved on this device only — shared store not writable from this account.';}
+    catch(e){st.textContent='Saved in this browser only. Use “Save this quote & get a link” at the top to email it to yourself.';}
   }else{
-    st.textContent='Saved on this device only — shared store unavailable here.';
+    st.textContent='Saved in this browser only. Use “Save this quote & get a link” at the top to email it to yourself.';
   }
   renderJobs();
 }
@@ -3475,7 +3475,7 @@ function loadJob(id,fromShared){
   document.getElementById('rm-w').value=room.w;document.getElementById('rm-l').value=room.l;
   renderParts();if(typeof renderSheets==='function')renderSheets();if(typeof renderTapes==='function')renderTapes();
   sdRender();planRenderForm();planDraw();cabRender();
-  document.getElementById('job-status').textContent='Loaded: '+(pl.name||id)+(fromShared?' (shared)':' (this device)');
+  document.getElementById('job-status').textContent='Loaded: '+(pl.name||id)+(fromShared?' (shared)':' (this browser)');
   goSec('jobs');
 }
 async function deleteJob(id,fromShared){
@@ -3498,7 +3498,7 @@ function renderJobs(){
     return '<div class="feat-row" style="padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel)">'+
       '<div style="flex:2;min-width:150px"><strong>'+(pl.name||r.id)+'</strong>'+(r.id===curJobId?' <span style="color:var(--spruce);font-size:.72rem;font-weight:700">● OPEN</span>':'')+'<br><span style="color:var(--muted);font-size:.76rem">'+(pl.client||'—')+(pl.ref?' · '+pl.ref:'')+'</span></div>'+
       '<span style="color:var(--muted);font-size:.78rem">'+(pl.panels||0)+' panels · '+(pl.items||0)+' room items · £'+((pl.total||0).toFixed?pl.total.toFixed(2):pl.total)+'</span>'+
-      '<span style="color:var(--muted);font-size:.74rem">'+d+' · '+(r.shared?'Shared':'This device')+'</span>'+
+      '<span style="color:var(--muted);font-size:.74rem">'+d+' · '+(r.shared?'Shared':'This browser')+'</span>'+
       '<button class="btn ghost" type="button" style="padding:7px 12px;font-size:.8rem" onclick="loadJob(\''+r.id+'\','+r.shared+')">Open</button>'+
       '<button class="row-del" type="button" onclick="deleteJob(\''+r.id+'\','+r.shared+')" aria-label="Delete job">✕</button>'+
       '</div>';
@@ -3988,6 +3988,7 @@ document.getElementById('quote-form').addEventListener('submit',function(e){
   box.innerHTML='<div class="bk-box"><button type="button" class="bk-open">Save this quote &amp; get a link</button><div class="bk-form" style="display:none"><p style="color:#1A1A1A"><strong>No account needed.</strong> We turn your quote into a private link. Open it any time, on any device, to pick up where you left off.</p><div class="bk-row"><input id="bk-name" type="text" placeholder="Quote name, e.g. Kitchen units" aria-label="Quote name"><input id="bk-email" type="email" placeholder="Your email (to send yourself the link)" aria-label="Your email"><button type="button" class="bk-btn" id="bk-make">Create my link</button></div><div id="bk-out" style="display:none"><div class="bk-row"><input id="bk-link" type="text" readonly aria-label="Your quote link"><button type="button" class="bk-btn bk-ghost" id="bk-copy">Copy link</button></div><div class="bk-row"><a class="bk-btn" id="bk-mail" href="#">Email the link to me</a><a class="bk-btn bk-ghost" id="bk-send" href="#">Send this quote to Brookhouse</a></div><p id="bk-note"></p></div></div></div>';
   function place(){var s=document.querySelector('section');if(s&&s.parentNode)s.parentNode.insertBefore(box,s);else document.body.appendChild(box);}
   place();
+  window.bkOpenSave=function(){box.querySelector('.bk-form').style.display='block';box.querySelector('.bk-open').style.display='none';box.scrollIntoView({behavior:'smooth',block:'start'});try{parent.postMessage({bkScrollTop:true},'*');}catch(e){}var n=box.querySelector('#bk-name');if(n)n.focus();};
   var $=function(i){return box.querySelector('#'+i)};
   box.querySelector('.bk-open').onclick=function(){box.querySelector('.bk-form').style.display='block';this.style.display='none';};
   $('bk-make').onclick=async function(){
