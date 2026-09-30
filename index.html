@@ -3985,7 +3985,7 @@ document.getElementById('quote-form').addEventListener('submit',function(e){
   css.textContent='#bk-save{max-width:1180px;margin:16px auto;padding:0 20px;font-family:Raleway,sans-serif}#bk-save .bk-box{background:#FFF4ED;border:1px solid #E4E1DE;border-radius:10px;padding:14px 18px}#bk-save button.bk-open{background:#FF671F;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 15px Raleway,sans-serif;cursor:pointer}#bk-save .bk-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}#bk-save input{flex:1;min-width:200px;border:1px solid #E4E1DE;border-radius:8px;padding:10px;font:16px Raleway,sans-serif}#bk-save .bk-btn{background:#1A1A1A;color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 15px Raleway,sans-serif;cursor:pointer;text-decoration:none;display:inline-block}#bk-save .bk-ghost{background:#fff;color:#1A1A1A;border:2px solid #1A1A1A}#bk-save p{margin:8px 0 0;font-size:14px;color:#5C5C5C}';
   document.head.appendChild(css);
   var box=document.createElement('div');box.id='bk-save';
-  box.innerHTML='<div class="bk-box"><button type="button" class="bk-open">Save this quote &amp; get a link</button><div class="bk-form" style="display:none"><p style="color:#1A1A1A"><strong>No account needed.</strong> We turn your quote into a private link. Open it any time, on any device, to pick up where you left off.</p><div class="bk-row"><input id="bk-name" type="text" placeholder="Quote name, e.g. Kitchen units" aria-label="Quote name"><input id="bk-email" type="email" placeholder="Your email (to send yourself the link)" aria-label="Your email"><button type="button" class="bk-btn" id="bk-make">Create my link</button></div><div id="bk-out" style="display:none"><div class="bk-row"><input id="bk-link" type="text" readonly aria-label="Your quote link"><button type="button" class="bk-btn bk-ghost" id="bk-copy">Copy link</button></div><div class="bk-row"><a class="bk-btn" id="bk-mail" href="#">Email the link to me</a><a class="bk-btn bk-ghost" id="bk-send" href="#">Send this quote to Brookhouse</a></div><p id="bk-note"></p></div></div></div>';
+  box.innerHTML='<div class="bk-box"><button type="button" class="bk-open">Save this quote &amp; get a link</button><div class="bk-form" style="display:none"><p style="color:#1A1A1A"><strong>No account needed.</strong> We turn your quote into a private link. Open it any time, on any device, to pick up where you left off.</p><div class="bk-row"><input id="bk-name" type="text" placeholder="Quote name, e.g. Kitchen units" aria-label="Quote name"><input id="bk-email" type="email" placeholder="Your email (to send yourself the link)" aria-label="Your email"><button type="button" class="bk-btn" id="bk-make">Create my link</button></div><div id="bk-out" style="display:none"><div class="bk-row"><input id="bk-link" type="text" readonly aria-label="Your quote link"><button type="button" class="bk-btn bk-ghost" id="bk-copy">Copy link</button></div><div class="bk-row"><button type="button" class="bk-btn" id="bk-fm">Email me the link</button><a class="bk-btn bk-ghost" id="bk-mail" href="#">Open in my email app</a><a class="bk-btn bk-ghost" id="bk-send" href="#">Send this quote to Brookhouse</a></div><p id="bk-fmsg" style="display:none;color:#1A1A1A;font-weight:700"></p><p id="bk-note"></p><p style="margin-top:6px">Email not opening? <a id="bk-gm" href="#" target="_blank" rel="noopener" style="color:#E0570F;font-weight:700">Write it in Gmail instead</a>, or use Copy link and paste it into any email.</p></div></div></div>';
   function place(){var s=document.querySelector('section');if(s&&s.parentNode)s.parentNode.insertBefore(box,s);else document.body.appendChild(box);}
   place();
   window.bkOpenSave=function(){box.querySelector('.bk-form').style.display='block';box.querySelector('.bk-open').style.display='none';box.scrollIntoView({behavior:'smooth',block:'start'});try{parent.postMessage({bkScrollTop:true},'*');}catch(e){}var n=box.querySelector('#bk-name');if(n)n.focus();};
@@ -4001,8 +4001,25 @@ document.getElementById('quote-form').addEventListener('submit',function(e){
     var body=encodeURIComponent('Here is your saved quote. Open this link any time to carry on:\n\n'+url+'\n');
     $('bk-mail').href='mailto:'+encodeURIComponent(em)+'?subject='+subj+'&body='+body;
     $('bk-send').href='mailto:'+TO+'?subject='+encodeURIComponent('Quote request: '+nm)+'&body='+encodeURIComponent('Customer: '+(em||'(no email given)')+'\nQuote name: '+nm+'\n\nQuote link:\n'+url+'\n');
+    $('bk-gm').href='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(em)+'&su='+subj+'&body='+body;
     $('bk-note').textContent=url.length>1800?'This is a large quote, so some email programs may cut the link short. Use Copy link and paste it into an email to be safe.':'Keep this link somewhere safe: anyone with it can open your quote.';
   };
+  ['bk-mail','bk-send'].forEach(function(id){$(id).addEventListener('click',function(ev){if(window.top!==window){ev.preventDefault();try{parent.postMessage({bkMailto:this.href},'*');}catch(e){}}});});
+  var fmsg=$('bk-fmsg'),fm=$('bk-fm'),fmT=null;
+  function say(t){fmsg.style.display='block';fmsg.textContent=t;}
+  fm.onclick=function(){
+    var em=($('bk-email').value||'').trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){say('Please enter a valid email address above first.');$('bk-email').focus();return;}
+    if(window.top===window){say('Use "Open in my email app" or Copy link on this page.');return;}
+    fm.disabled=true;say('Sending...');
+    try{parent.postMessage({bkSaveForm:{email:em,name:($('bk-name').value||'').trim()||'My quote',link:$('bk-link').value}},'*');}catch(e){}
+    clearTimeout(fmT);fmT=setTimeout(function(){fm.disabled=false;say('Could not confirm it sent. Please use Copy link or Open in my email app.');},15000);
+  };
+  window.addEventListener('message',function(e){
+    if(e.origin!==HOST)return;var d=e.data||{};if(!d.bkSaveResult)return;
+    clearTimeout(fmT);fm.disabled=false;
+    say(d.bkSaveResult==='ok'?'Sent. We have your request and will email the link to you shortly. You can also copy it below.':'Sorry, that did not send. Please use Copy link or Open in my email app.');
+  });
   $('bk-copy').onclick=function(){var i=$('bk-link');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand('copy');}this.textContent='Copied ✓';var b=this;setTimeout(function(){b.textContent='Copy link';},1500);};
   var q=P.get('q');
   if(q){setTimeout(async function(){
